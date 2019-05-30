@@ -63,6 +63,7 @@ class NewsMedia(models.Model):
 class TwitterMedia(models.Model):
     currencyId = models.ForeignKey(Currency, on_delete=models.CASCADE)
     mediaId = models.ForeignKey(Media, on_delete=models.CASCADE)
+    tweet_id = models.CharField(max_length=100)
     content = models.TextField()
     likes = models.IntegerField()
     retweets = models.IntegerField()
@@ -86,4 +87,3 @@ class RedditMedia(models.Model):
     textblobscore = models.FloatField()
     vaderscore = models.FloatField()
     customclfscore = models.FloatField()
-
