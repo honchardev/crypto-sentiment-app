@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}SENTPREDAPP — Головна сторінка{% endblock %}
+
+{% block content %}
+<p>Головна сторінка: вітаємо</p>
+
+{% if user.is_authenticated %}
+<p>Вітаємо, {{ user.username }}!</p>
+<p><a href="{% url 'logout' %}">Вийти із системи</a></p>
+{% else %}
+<p>На жаль, ви не ввійшли у систему.</p>
+<p><a href="{% url 'login' %}">Увійти до системи</a></p>
+{% endif %}
+
+{% endblock %}
