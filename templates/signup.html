@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}SENTPREDAPP — Реєстрація довіреної особи{% endblock %}
+
+{% block popup_modal %}
+<!-- popup_modal block is skipped-->
+{% endblock %}
+
+{% block content %}
+<form method="post" class="form-signin">
+    <div class="text-center mb-4">
+        <img class="mb-4" src="{% static 'logo.png' %}" alt="" width="72" height="72">
+        <h1 class="h3 mb-3 font-weight-normal">РЕЄСТРАЦІЯ ДОВІРЕНОЇ ОСОБИ</h1>
+        <p>Зареєструйте довірену особу, що має право переглядати останні зібрані новинні ресурси та змінювати оцінку їх тональності</p>
+    </div>
+    {% csrf_token %}
+    <label for="id_username" class="sr-only">Логін користувача</label>
+    <input type="text" name="username" maxlength="150" autofocus required id="id_username" class="form-control" placeholder="Логін користувача">
+    <small style="color: grey">Обов'язкове поле. 150 символів макс. Букви, цифри та @/./+/-/_</small>
+    <p></p>
+    <label for="id_password1" class="sr-only">Пароль</label>
+    <input type="password" name="password1" required id="id_password1" class="form-control" placeholder="Пароль">
+    <small style="color: grey">Не схожий на логін. Містить більше 8 символів. Містить не тільки числа. Не містить загальновживаних слів</small>
+    <p></p>
+    <label for="id_password2" class="sr-only">Підтвердженя паролю</label>
+    <input type="password" name="password2" required id="id_password2" class="form-control" placeholder="Підтвердженя паролю">
+    <small style="color: grey">Підтвердіть пароль для верифікації</small>
+    <p></p>
+
+    {% if status is True %}
+    <div class="alert alert-success" role="alert">
+        Успішно зареєстровано довірену особу <b>{{ new_user_username }}</b>
+    </div>
+    {% endif %}
+    {% if status is False %}
+    <div class="alert alert-danger" role="alert">
+        <p>Не вдалось зареєструвати довірену особу: були введені неправильні значення у поля.</p>
+    </div>
+    {% endif %}
+
+    <button class="btn btn-lg btn-primary btn-block" type="submit">Зареєструвати</button>
+</form>
+{% endblock %}
+
+{% block footer %}
+<div class="footer-copyright text-center py-2 footer-copyright-custom fixed-bottom">
+    <img class="mb-2" src="{% static 'logo.png' %}" alt="" width="24" height="24">
+    &copy; 2019 SENTPREDAPP
+</div>
+{% endblock %}
+
+{% block popup_modal_script %}
+<!-- popup_modal_script block is skipped -->
+{% endblock %}

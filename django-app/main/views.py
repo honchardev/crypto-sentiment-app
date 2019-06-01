@@ -7,6 +7,8 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.http import HttpResponse
 
+from ratelimit.decorators import ratelimit
+
 from .scrapers.scrape_twitter import TwitterScraper
 
 
@@ -43,22 +45,6 @@ def dev(req):
     return render(req, 'dev.html')
 
 
-def userguide(req):
-    return render(req, 'userguide.html')
-
-
-def devguide(req):
-    return render(req, 'devguide.html')
-
-
-def apppurpose(req):
-    return render(req, 'apppurpose.html')
-
-
-def aboutalgo(req):
-    return render(req, 'aboutalgo.html')
-
-
 @login_required
 def signup(req):
     if not req.user.is_superuser:
@@ -79,6 +65,7 @@ def signup(req):
     return render(req, 'signup.html', context=context)
 
 
+@ratelimit(key='ip', rate='10/m')
 def api_index(req):
     resp_data = {
         'status': 'OK',
@@ -89,6 +76,7 @@ def api_index(req):
     return JsonResponse(resp_data)
 
 
+@ratelimit(key='ip', rate='10/m')
 def api_getcurreqscrapedtweetscnt(req):
     resp_data = {
         'status': 'OK',

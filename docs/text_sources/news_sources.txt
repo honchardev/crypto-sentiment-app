@@ -1,0 +1,20 @@
+news
+
+market:
+- https://www.cnbc.com/cryptocurrency/
+- https://www.coindesk.com/
+- https://cointelegraph.com/
+- https://www.ccn.com/
+
+btc:
+- https://www.cnbc.com/search
+- https://www.forbes.com/search
+- https://www.bitcoin.com/
+
+eth:
+- https://www.cnbc.com/search
+- https://www.forbes.com/search
+
+ltc:
+- https://www.cnbc.com/search
+- https://www.forbes.com/search

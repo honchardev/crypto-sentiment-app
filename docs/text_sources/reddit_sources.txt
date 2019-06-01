@@ -1,0 +1,20 @@
+reddit
+
+crypto market:
+- https://www.reddit.com/r/CryptoMarkets/
+- https://www.reddit.com/r/CryptoCurrencyTrading
+
+btc:
+- https://www.reddit.com/r/Bitcoin
+- https://www.reddit.com/r/bitcointrading
+- https://www.reddit.com/r/BitcoinMarkets
+- https://www.reddit.com/r/CryptoCurrencyTrading
+
+eth:
+- https://www.reddit.com/r/ethereum
+- https://www.reddit.com/r/ethtrader
+
+ltc:
+- https://www.reddit.com/r/litecoin/
+- https://www.reddit.com/r/LitecoinTraders/
+- https://www.reddit.com/r/LitecoinMarkets/

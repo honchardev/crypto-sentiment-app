@@ -80,7 +80,7 @@ class TwitterTimelineParser(object):
             tweet_link = 'twitter.com{0}'.format(tweet_tag['data-permalink-path'])
             # Find tweet posting timestamp.
             timestamp_unixlike = tweet_tag.find('span', class_='_timestamp')['data-time']
-            timestamp = datetime.utcfromtimestamp(int(timestamp_unixlike)).strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.utcfromtimestamp(int(timestamp_unixlike))
             # Create Tweet class instance to save.
             tweet_instance = Tweet(tweet_id=tweet_id, tweet_content=tweet_content,
                                    favorite_cnt=favorite_cnt, retweet_cnt=retweet_cnt, reply_cnt=reply_cnt,
@@ -121,12 +121,20 @@ class TwitterScraper(object):
         self._timeline_parser = TwitterTimelineParser()
         self._last_req_scraped_tweets_cnt = 0
 
-    def scrape_search_timeline(self, search_query, from_datetime, to_datetime):
+    def scrape_search_timeline_adv_search(self, search_query, from_datetime, to_datetime):
         # Build a search query.
         search_query = "{0} since:{1} until:{2}".format(
             search_query,
             from_datetime.strftime("%Y-%m-%d"), to_datetime.strftime("%Y-%m-%d")
         )
+        search_query = urllib.parse.quote(search_query)
+        # Start scraping search results page timeline.
+        scraped_tweets = self._scrape_timeline(TWITTER_SEARCH_URL, TWITTER_SEARCH_MORE_URL, search_query)
+        return scraped_tweets
+
+    def scrape_search_timeline(self, search_query):
+        # Build a search query.
+        search_query = "{0}".format(search_query)
         search_query = urllib.parse.quote(search_query)
         # Start scraping search results page timeline.
         scraped_tweets = self._scrape_timeline(TWITTER_SEARCH_URL, TWITTER_SEARCH_MORE_URL, search_query)
@@ -246,7 +254,8 @@ def __dbg():
     ts = TwitterScraper()
     from_date = datetime(2018, 5, 1)
     to_date = datetime(2019, 5, 30)
-    tweets = ts.scrape_search_timeline("#bitcoin", from_date, to_date)
+    tweets = ts.scrape_search_timeline_adv_search("#bitcoin", from_date, to_date)
+    tweets = ts.scrape_search_timeline('#bitcoin')
     tweets = ts.scrape_userpage_timeline('realdonaldtrump')
     tweets = ts.scrape_userpage_timeline_adv_search('WhalePanda', from_date, to_date)
     print(tweets[:5], len(tweets))

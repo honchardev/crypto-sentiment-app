@@ -1,0 +1,42 @@
+twitter
+
+influencers:
+- https://twitter.com/VitalikButerin
+- https://twitter.com/SatoshiLite
+- https://twitter.com/aantonop
+- https://twitter.com/ErikVoorhees
+- https://twitter.com/brian_armstrong
+- https://twitter.com/cz_binance
+- https://twitter.com/saifedean
+
+cryptocurrency exchanges:
+- https://twitter.com/binance
+- https://twitter.com/bitmexdotcom
+- https://twitter.com/bitfinex
+- https://twitter.com/coinbase
+- https://twitter.com/cex_io
+- https://twitter.com/krakenfx
+    
+research pages:
+- https://twitter.com/bitmexresearch
+- https://twitter.com/wizsecurity
+- https://twitter.com/proofofresearch
+
+cryptocurrency traders:
+- https://twitter.com/VentureCoinist
+- https://twitter.com/notsofast
+- https://twitter.com/Cryptopia_NZ
+- https://twitter.com/BTC_Revolution
+- https://twitter.com/FelixOHartmann
+- https://twitter.com/CryptoMoshing
+- https://twitter.com/cryptotraderpro
+    
+official cryptocurrency accounts
+- https://twitter.com/bitcoin
+- https://twitter.com/ethereum
+- https://twitter.com/litecoin
+
+searches:
+- market hashtags: #cryptocurrency #crypto
+- cryptocurrency hashtags: #btc #eth #ltc
+- cryptocurrenecy tags: $btc $eth $ltc

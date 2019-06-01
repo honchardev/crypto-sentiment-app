@@ -19,7 +19,8 @@ class Media(models.Model):
 
 class Market(models.Model):
     date = models.DateTimeField(default=timezone.now)
-    marketcap = models.FloatField()
+    globalmarketcap = models.FloatField()
+    globalvolume = models.FloatField()
     mchoursentiment = models.FloatField()
     mchourprediction = models.FloatField()
     mchourtrend = models.FloatField()
@@ -45,7 +46,8 @@ class Price(models.Model):
     lowprice = models.FloatField()
     closeprice = models.FloatField()
     spreadvalue = models.FloatField()
-    returnvalue = models.FloatField() 
+    returnvalue = models.FloatField()
+    volumeto = models.FloatField() 
 
 
 class NewsMedia(models.Model):
