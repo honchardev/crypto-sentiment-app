@@ -85,18 +85,25 @@ def api_index(req):
 
 
 @ratelimit(key='ip', rate='10/m')
-def api_getcurreqscrapedtweetscnt(req):
-    try:
-        resp_data = {
-            'status': 'OK',
-            'cnt': twitter_scraper.get_last_scraped_tweets_cnt()
-        }
-        return JsonResponse(resp_data)
-    except:
-        resp_data = {
-            'status': 'FAIL'
-        }
-        return JsonResponse(resp_data)
+def api_get_market_last(req):
+    resp_data = {}
+    if req.method == 'POST':
+        # todo:
+        resp_data['status'] = 'OK'
+    else:
+        resp_data['status'] = 'FAIL'
+    return JsonResponse(resp_data)
+
+
+@ratelimit(key='ip', rate='10/m')
+def api_get_price_last(req):
+    resp_data = {}
+    if req.method == 'POST':
+        # todo:
+        resp_data['status'] = 'OK'
+    else:
+        resp_data['status'] = 'FAIL'
+    return JsonResponse(resp_data)
 
 
 @ratelimit(key='ip', rate='10/m')

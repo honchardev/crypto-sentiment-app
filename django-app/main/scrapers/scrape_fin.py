@@ -1,16 +1,17 @@
 import json
+import time
 from datetime import datetime, timedelta
 import os
 
-import pandas as pd
+import psycopg2
 import requests
 from dateutil.relativedelta import relativedelta
 
-cryptocompare_api_key = os.environ['CRYPTOCOMPARE_API_KEY']
+cryptocompare_api_key = os.environ.get('cryptocompare_api_key')
 
+GLOBAL_MC_VOL = "https://graphs2.coinmarketcap.com/global/marketcap-total/{0}/{1}/"
 HISTORICAL_PRICE_HOUR = 'https://min-api.cryptocompare.com/data/histohour?fsym={0}&tsym=USD&extraParams=sentpredapp&limit=2000&api_key={1}'
 CURRENT_PRICE_FULL = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH,LTC&tsyms=USD&extraParams=sentpredapp&api_key={0}"
-GLOBAL_MC_VOL = "https://graphs2.coinmarketcap.com/global/marketcap-total/{0}/{1}/"
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"
 
@@ -21,10 +22,8 @@ cryptocurrency_id_by_ticker = {
     'LTC': 3
 }
 
-# Default values for sentiment, predictions and trends which identify uninitialized data.
+# Default values for sentiment, predictions and trends.
 DEFAULT_SENT_VALUE = 100.0
-DEFAULT_PRED_VALUE = 101.0
-DEFAULT_TREND_VALUE = 102.0
 
 
 class MarketData(object):
@@ -33,10 +32,24 @@ class MarketData(object):
     def __init__(self, **params):
         self.date = params.get('date')
         self.globalmarketcap = params.get('globalmarketcap')
-        self.globalvolume = params.get('globalvolume')
         self.mchoursentiment = params.get('mchoursentiment')
         self.mchourprediction = params.get('mchourprediction')
         self.mchourtrend = params.get('mchourtrend')
+        self.globalvolume = params.get('globalvolume')
+
+    def jsonify(self):
+        return {
+            'date': self.date,
+            'globalmarketcap': self.globalmarketcap,
+            'mchoursentiment': self.mchoursentiment,
+            'mchourprediction': self.mchourprediction,
+            'mchourtrend': self.mchourtrend,
+            'globalvolume': self.globalvolume
+        }
+
+    def __repr__(self):
+        return "MarketData {0}".format(" ".join(
+            [str(self.globalmarketcap), str(self.globalvolume), self.date.strftime("%m/%d/%Y, %H:%M:%S")]))
 
 
 class PriceData(object):
@@ -45,138 +58,140 @@ class PriceData(object):
     def __init__(self, **params):
         self.date = params.get('date')
         self.openprice = params.get('openprice')
-        self.closeprice = params.get('closeprice')
         self.highprice = params.get('highprice')
         self.lowprice = params.get('lowprice')
+        self.closeprice = params.get('closeprice')
         self.spreadvalue = params.get('spreadvalue')
         self.returnvalue = params.get('returnvalue')
         self.volumeto = params.get('volumeto')
-        self.currency_id = params.get('currency_id')
+        self.currencyId_id = params.get('currencyId_id')
+
+    def jsonify(self):
+        return {
+            'date': self.date,
+            'openprice': self.openprice,
+            'highprice': self.highprice,
+            'lowprice': self.lowprice,
+            'closeprice': self.closeprice,
+            'spreadvalue': self.spreadvalue,
+            'returnvalue': self.returnvalue,
+            'volumeto': self.volumeto,
+            'currencyId_id': self.currencyId_id
+        }
+
+    def __repr__(self):
+        return "PriceData {0}".format(" ".join(
+            [str(self.closeprice), str(self.volumeto), self.date.strftime("%m/%d/%Y, %H:%M:%S")]))
 
 
 class MarketDataScraper(object):
 
     @staticmethod
-    def scrape_current_data():
-        """Scrape current marketcap and global volume values."""
-        # From: now-60min. To: now+10min
+    def scrape_today_data():
+        """Scrape global market data from todays 00:00
+        Note, that cmc endpoint requires 1 month date range in order to reply
+            with hourly data, not 5min data.
+        """
+        # Define latest and earliest timestamps for today and required range.
         now = datetime.now()
-        from_date = now - timedelta(minutes=60)
-        to_date = now + timedelta(minutes=10)
-        # Build request URL
-        from_date_unix_ms = int(from_date.timestamp() * 1000)
-        to_date_unix_ms = int(to_date.timestamp() * 1000)
-        request_url = GLOBAL_MC_VOL.format(from_date_unix_ms, to_date_unix_ms)
-        # Send a request & collect raw response text
-        print('DBG: Trying to get response from requests.get...')
+        today_earliest = datetime(now.year, now.month, now.day)
+        today_earliest_unix_ms = int(today_earliest.timestamp() * 1000)
+        range_earliest = now - relativedelta(months=1)
+        range_earliest_unix_ms = int(range_earliest.timestamp() * 1000)
+        range_latest = now + timedelta(hours=1)
+        range_latest_unix_ms = int(range_latest.timestamp() * 1000)
+        # Build and send request.
+        request_url = GLOBAL_MC_VOL.format(range_earliest_unix_ms, range_latest_unix_ms)
         response = requests.get(request_url, headers={'User-agent': USER_AGENT})
-        response_text = response.text
-        response_dict = json.loads(response_text)
-        # Get last global volume and mktcap values.
-        last_mktcap_value = response_dict['market_cap_by_available_supply'][-1][1]
-        last_volume_value = response_dict['volume_usd'][-1][1]
-        last_date_timestamp = int(response_dict['volume_usd'][-1][0] / 1000)
-        last_date_value = datetime.fromtimestamp(last_date_timestamp)
-        print('DBG: Scraped last data at {0}: mktcap:{1} volume:{2}'.format(
-            last_date_value, last_mktcap_value, last_volume_value))
-        return last_date_value, last_mktcap_value, last_volume_value
+        response_dict = json.loads(response.text)
+        # Get today's volume and mktcap values.
+        today_mktcap_value = response_dict['market_cap_by_available_supply']
+        today_volume_value = response_dict['volume_usd']
+        for mktcap_data, vol_data in zip(today_mktcap_value, today_volume_value):
+            data_point_timestamp = mktcap_data[0]  # same as vol_data[0]
+            if data_point_timestamp >= today_earliest_unix_ms:
+                marketdata_obj = MarketData(
+                    date=datetime.fromtimestamp(int(mktcap_data[0] / 1000)),
+                    globalmarketcap=mktcap_data[1],
+                    globalvolume=vol_data[1],
+                    mchoursentiment=DEFAULT_SENT_VALUE,
+                    mchourprediction=DEFAULT_SENT_VALUE,
+                    mchourtrend=DEFAULT_SENT_VALUE
+                )
+                yield marketdata_obj
+        print('Scraped global market data from {0} to {1}\n'.format(
+            range_earliest, range_latest))
 
     @staticmethod
     def scrape_historical_data(from_date, to_date):
-        """Scrape data by month. Note, that future month could be used as a final month."""
-        # Container to save mktcap values.
-        mkdata_container = []
-        # Fix to_date so that max data should be a month further but data will be in hourly format, not with lower interval.
-        to_date = to_date + relativedelta(months=1)
-        to_date = datetime(to_date.year, to_date.month, 1, 0, 0, 1)
-        # toFix: now you can only use it properly if to_date=datetime.now().
-        # Same fix for from_date: avoid missing saving first value.
-        from_date = from_date - timedelta(minutes=from_date.minute)
-        from_date = from_date - timedelta(seconds=from_date.second)
-        from_date = from_date + timedelta(seconds=1)
+        """Scrape historical data about global market by month."""
         # Scrape all the historical data.
-        cur_date = from_date
-        while cur_date < to_date:
+        start_range = from_date
+        while start_range < to_date:
             # Build request URL
-            request_from_date_unix_ms = int(cur_date.timestamp() * 1000)
-            cur_date += relativedelta(months=1)  # Note: cur_date is changed here
-            if cur_date > to_date:
-                cur_date = to_date + timedelta(minutes=5)
-            request_to_date_unix_ms = int(cur_date.timestamp() * 1000)
-            request_url = GLOBAL_MC_VOL.format(request_from_date_unix_ms, request_to_date_unix_ms)
+            start_range_unix_ms = int(start_range.timestamp() * 1000)
+            end_range = start_range + relativedelta(months=1)
+            end_range_unix_ms = int(end_range.timestamp() * 1000)
+            request_url = GLOBAL_MC_VOL.format(start_range_unix_ms, end_range_unix_ms)
             # Send a request & collect raw response text
-            print('DBG: Trying to get response from requests.get...')
             response = requests.get(request_url, headers={'User-agent': USER_AGENT})
-            response_text = response.text
-            response_dict = json.loads(response_text)
-            # Load volume and mktcap data.
-            global_mktcap_data = response_dict.get('market_cap_by_available_supply', None)
-            global_volume_data = response_dict.get('volume_usd', None)
-            if global_mktcap_data and global_volume_data:
-                # Save data as MarketData instance.
-                for mktcap_data, vol_data in zip(global_mktcap_data, global_volume_data):
-                    marketdata_obj = MarketData(
-                        date=datetime.fromtimestamp(int(mktcap_data[0] / 1000)),
-                        globalmarketcap=mktcap_data[1],
-                        globalvolume=vol_data[1],
-                        mchoursentiment=DEFAULT_SENT_VALUE,  # fake data
-                        mchourprediction=DEFAULT_PRED_VALUE,  # fake data
-                        mchourtrend=DEFAULT_TREND_VALUE  # fake data
-                    )
-                    mkdata_container.append(marketdata_obj)
-            print('DBG: saved mktcap and glbl_volume data from {0} to {1}'.format(
-                datetime.fromtimestamp(request_from_date_unix_ms / 1000),
-                datetime.fromtimestamp(request_to_date_unix_ms / 1000)
-            ))
-            print('DBG: {0} items in total were saved\n'.format(len(mkdata_container)))
-        # Final awkward fix: if last two values share the same hour value - remove the last element.
-        if mkdata_container[-1].date.hour == mkdata_container[-2].date.hour:
-            del mkdata_container[-1]
-        print('DBG: MarketDataScraper.scrape_historical_data scraped {0} items\n'.format(len(mkdata_container)))
-        return mkdata_container
+            response_dict = json.loads(response.text)
+            # Yield volume and mktcap data.
+            global_mktcap_data = response_dict.get('market_cap_by_available_supply')
+            global_volume_data = response_dict.get('volume_usd')
+            print('Scraped global market data from {0} to {1}\n'.format(start_range, end_range))
+            for mktcap_data, vol_data in zip(global_mktcap_data, global_volume_data):
+                marketdata_obj = MarketData(
+                    date=datetime.fromtimestamp(int(mktcap_data[0] / 1000)),
+                    globalmarketcap=mktcap_data[1],
+                    globalvolume=vol_data[1],
+                    mchoursentiment=DEFAULT_SENT_VALUE,
+                    mchourprediction=DEFAULT_SENT_VALUE,
+                    mchourtrend=DEFAULT_SENT_VALUE
+                )
+                yield marketdata_obj
+            # Update start_range with the range end's date.
+            start_range = end_range
+            # Wait for a bit bc DBAD.
+            time.sleep(0.1)
 
 
 class PriceDataScraper(object):
 
     def scrape_historical_data(self, ticker, from_date):
-        """Get ticker_name historical OHLCV data. Note, that function starts at datetime.now."""
-        # Container to save historical financial data.
-        findata_container = []
-        # Make first request - the earliest data.
-        print('DBG: Trying to get response from requests.get...')
+        """Get ticker_name historical OHLCVRS data.
+        Note, that this method scrapes everything till today's date."""
+        # Make first request - the earliest data without toTs parameter.
         request_url = HISTORICAL_PRICE_HOUR.format(ticker, cryptocompare_api_key)
         response = requests.get(request_url, headers={'User-agent': USER_AGENT})
         response_dict = json.loads(response.text)
+        # The earliest dat to compare with in unix format.
+        from_date_unixtime = int(from_date.timestamp())
         # Get Price data from the first request.
         first_response_data = response_dict['Data'][::-1]
-        from_date_unixtime = int(from_date.timestamp())
-        print('DBG: Scraped {0} data points from {1} to {2}'.format(
+        print('DBG: Scraped {0} data points from {1} to {2}\n'.format(
             len(first_response_data),
             datetime.fromtimestamp(first_response_data[0]['time']),
             datetime.fromtimestamp(first_response_data[-1]['time'])
         ))
         for item in first_response_data:
             if item['time'] < from_date_unixtime:
-                print('DBG: Exiting at {0} date.'.format(datetime.fromtimestamp(item['time'])))
-                return findata_container
+                return
             pricedata_to_add = self._cryptocompare_item_to_pricedata(item, ticker)
-            findata_container.append(pricedata_to_add)
-        print('DBG: Saved {0} data points with dates range from {1} to {2}\n'.format(
-            len(findata_container), findata_container[0].date, findata_container[-1].date))
-        # first toTs value - the earliest timestamp received from first request.
+            yield pricedata_to_add
+        # Save toTs value for the next request - the earliest timestamp received from first request.
         toTs = response_dict.get('TimeFrom', None)
-        # Scrape historical data depending on tS parameter
+        # Scrape historical data depending on tS parameter.
         to_break = False
         while toTs:
             # Make Nth request.
             request_url = HISTORICAL_PRICE_HOUR.format(ticker, cryptocompare_api_key)
             request_url += "&toTs={0}".format(toTs)
-            print('DBG: Trying to get response from requests.get...')
             response = requests.get(request_url, headers={'User-agent': USER_AGENT})
             response_dict = json.loads(response.text)
             # Get Price data from the Nth request.
             nth_response_data = response_dict['Data'][:-1][::-1]
-            print('DBG: Scraped {0} data points from {1} to {2}'.format(
+            print('DBG: Scraped {0} data points from {1} to {2}\n'.format(
                 len(nth_response_data),
                 datetime.fromtimestamp(nth_response_data[0]['time']),
                 datetime.fromtimestamp(nth_response_data[-1]['time'])
@@ -184,32 +199,25 @@ class PriceDataScraper(object):
             for item in nth_response_data:
                 # Check if we need any more data from current Nth page.
                 if item['time'] < from_date_unixtime:
-                    print('DBG: Exiting at {0} date.'.format(datetime.fromtimestamp(item['time'])))
                     to_break = True
                     break
                 pricedata_to_add = self._cryptocompare_item_to_pricedata(item, ticker)
-                findata_container.append(pricedata_to_add)
-            print('DBG: findata_container date range is from {0} to {1}'.format(
-                findata_container[0].date, findata_container[-1].date))
-            print('DBG: findata_container size is {0}\n'.format(len(findata_container)))
+                yield pricedata_to_add
             # Check if we need any more data from any other pages.
-            if to_break:
+            if to_break is True:
                 break
-            # Update toTs value
+            # Update toTs value for the next page.
             toTs = response_dict.get('TimeFrom', None)
-        print('DBG: Returning container with size of {0}\n'.format(len(findata_container)))
-        return findata_container
 
     @staticmethod
-    def scrape_current_data():
+    def scrape_current_full_data():
         """Get BTC, LTC and ETH current full data, not only OHLCV."""
         # Send a request & collect raw response text
         print('DBG: Trying to get response from requests.get...')
         request_url = CURRENT_PRICE_FULL.format(cryptocompare_api_key)
         response = requests.get(request_url, headers={'User-agent': USER_AGENT})
-        response_text = response.text
-        response_dict = json.loads(response_text)
-        # Get raw data, erase same data for display.
+        response_dict = json.loads(response.text)
+        # Get raw data.
         raw_data = response_dict['RAW']
         # Return all the data from cryptocompare response.
         print('Scraped FULL data about btc, eth and ltc')
@@ -230,9 +238,88 @@ class PriceDataScraper(object):
             spreadvalue=item['high'] - item['low'],
             returnvalue=item['open'] - item['close'],
             volumeto=item['volumeto'],
-            currency_id=cryptocurrency_id_by_ticker[ticker]
+            currencyId_id=cryptocurrency_id_by_ticker[ticker]
         )
         return price_data
+
+
+class FinScraperPerformer(object):
+    
+    def __init__(self):
+        # DB connection and cursor instances.
+        self.conn = psycopg2.connect()
+        self.cur = self.conn.cursor()
+        # Existing dates in main_market.
+        self.existing_dates_market = self._get_existing_dates_market()
+        # Existing dates in main_price.
+        self.existing_dates_price = self._get_existing_dates_price()
+        # Initialize scrapers.
+        self.mds = MarketDataScraper()
+        self.pds = PriceDataScraper()
+        # The earliest date to scrape.
+        self.earliest_date = datetime(2016, 1, 1)
+
+    def scrape_market_data(self):
+        # Update existing dates in main_market table.
+        self.existing_dates_market = self._get_existing_dates_market()
+        # The latest date to scrape.
+        latest_date = datetime.now() + timedelta(hours=1)
+        # Start scraping market data.
+        for mkt_data in self.mds.scrape_historical_data(self.earliest_date, latest_date):
+            if mkt_data.date not in self.existing_dates_market:
+                self._save_marketdata(mkt_data)
+
+    def scrape_price_data(self):
+        # Update existing dates in main_price table.
+        self.existing_dates_price = self._get_existing_dates_price()
+        # Start scraping price data by currency ticker.
+        for ticker in cryptocurrency_id_by_ticker.keys():
+            for price_data in self.pds.scrape_historical_data(ticker, self.earliest_date):
+                if price_data not in self.existing_dates_price:
+                    self._save_pricedata(price_data)
+
+    def _save_marketdata(self, md_obj):
+        insert_query = """
+            INSERT INTO main_market
+            (date, globalmarketcap, mchoursentiment, mchourprediction, mchourtrend, globalvolume)
+            VALUES (%s, %s, %s, %s, %s, %s);"""
+        insert_query_fields = (
+            md_obj.date,
+            md_obj.globalmarketcap,
+            md_obj.mchoursentiment, md_obj.mchourprediction, md_obj.mchourtrend,
+            md_obj.globalvolume
+        )
+        self.cur.execute(insert_query, insert_query_fields)
+        self.conn.commit()
+        print('DBG INSERT: inserted {0}'.format(md_obj))
+
+    def _save_pricedata(self, pd_obj):
+        insert_query = """
+            INSERT INTO main_price
+            (date, openprice, highprice, lowprice, closeprice, spreadvalue, returnvalue, "currencyId_id", volumeto)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);"""
+        insert_query_fields = (
+            pd_obj.date,
+            pd_obj.openprice, pd_obj.highprice, pd_obj.lowprice, pd_obj.closeprice,
+            pd_obj.spreadvalue, pd_obj.returnvalue,
+            pd_obj.currencyId_id,
+            pd_obj.volumeto
+        )
+        self.cur.execute(insert_query, insert_query_fields)
+        self.conn.commit()
+        print('DBG INSERT: inserted {0}'.format(pd_obj))
+
+    def _get_existing_dates_market(self):
+        self.cur.execute("""select date from main_market;""")
+        existing_dates_fromdb = self.cur.fetchall()
+        existing_dates = [row[0] for row in existing_dates_fromdb]
+        return existing_dates
+
+    def _get_existing_dates_price(self):
+        self.cur.execute("""select date from main_price;""")
+        existing_dates_fromdb = self.cur.fetchall()
+        existing_dates = [row[0] for row in existing_dates_fromdb]
+        return existing_dates
 
 
 def __dbg():
@@ -240,11 +327,16 @@ def __dbg():
     to_date = datetime(2019, 6, 1)
 
     mdscraper = MarketDataScraper()
-    scraped_data = mdscraper.scrape_current_data()
-    scraped_data = mdscraper.scrape_historical_data(from_date, to_date)
+    # for mkt_data in mdscraper.scrape_today_data():
+    for mkt_data in mdscraper.scrape_historical_data(from_date, to_date):
+        print(mkt_data)
 
     pdscrapper = PriceDataScraper()
-    scraped_data = pdscrapper.scrape_current_data()
-    scraped_data = pdscrapper.scrape_historical_data('BTC', from_date)
+    scraped_data = pdscrapper.scrape_current_full_data()
+    for price_data in pdscrapper.scrape_historical_data('ETH', from_date):
+        pass
 
-    print(scraped_data)
+def __historical_all_date_range():
+    fsp = FinScraperPerformer()
+    fsp.scrape_market_data()
+    fsp.scrape_price_data()

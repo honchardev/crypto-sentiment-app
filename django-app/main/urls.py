@@ -18,7 +18,6 @@ urlpatterns = [
     path('aboutalgo/', TemplateView.as_view(template_name='aboutalgo.html'), name='aboutalgo'),
 
     path('api/', views.api_index, name='api_index'),
-    path('api/getcurreqscrapedtweetscnt', views.api_getcurreqscrapedtweetscnt, name='api_getcurreqscrapedtweetscnt'),
     path('api/update_last_data', views.api_update_last_data, name='api_update_last_data'),
     path('api/update_range_data', views.api_update_range_data, name='api_update_range_data'),
 ]

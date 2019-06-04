@@ -389,7 +389,7 @@ class TwitterScraperPerformer(object):
         insert_query = """
             INSERT INTO main_twittermedia
             ("mediaId_id", "currencyId_id", tweet_id, content, likes, retweets, replies, link, date, textblobscore, vaderscore, customclfscore)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"""
         insert_query_fields = (
             tweet.mediaId_id, tweet.currencyId_id,
             tweet.tweet_id,
@@ -437,13 +437,11 @@ def __dbg_truncate_db():
         print('Couldn\'t truncate main_twittermedia table. Error: {0}'.format(e))
 
 
-def __historical_big_date_range_from_today():
+def __historical_big_date_range():
     tsp = TwitterScraperPerformer()
-    date_from = datetime(2019, 1, 1)
+    date_from = datetime(2017, 8, 1)
     date_to = datetime.now()
     while date_from < date_to:
         date_from_plus_1d = date_from + timedelta(days=1)
         tsp.scrape_date_range_data(date_from, date_from_plus_1d)
         date_from = date_from_plus_1d
-
-__historical_big_date_range_from_today()
