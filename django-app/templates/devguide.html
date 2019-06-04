@@ -1,7 +1,64 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
 {% block title %}SENTPREDAPP — Керівництво розробника{% endblock %}
 
+{% block popup_modal %}
+<!-- popup_modal block is skipped-->
+{% endblock %}
+
 {% block content %}
-<p>Керівництво розробника: вітаємо</p>
+<div class="container">
+    <h2>АПІ системи SENTPREDAPP</h2>
+    <small>Документація АПІ, приклади запитів, правила використання та обмеження.</small>
+    <hr>
+
+    <h4>Загальні</h4>
+    <p></p>
+    <hr>
+
+    <h4>Вихідний код</h4>
+    <p>Вихідний код системи є у відкритому доступі за
+        <a href="https://github.com/honchardev/crypto-sentiment-app">даним посиланням</a>. <br />
+        У даному репозиторії наданий доступ до таких файлів:
+        <ul>
+            <li>файл README.md, що містить пояснення роботи системи</li>
+            <li>папка django-app, що містить основний код веб-системи</li>
+            <li>папка docs, що містить корисну інформацію та діаграми, пов'язані із архітектурою та роботою веб-системи.</li>
+        </ul>
+    </p>
+    <hr>
+
+    <h4>Обмеження</h4>
+    <p>Існують обмеження на кількість запитів: 10 запитів на хвилину. <br />
+        Дане обмеження встановлене на усі функціональні точки АПІ. <br />
+        Використовується django-ratelimit:
+        (<a href="https://pypi.org/project/django-ratelimit/">PyPi</a>)
+<pre><code>from ratelimit.decorators import ratelimit
+
+@ratelimit(key='ip', rate='10/m')
+def api_endpoint_view(request):
+    ...</code></pre>
+        Приклад використання наведений у файлі
+        "<a href="https://github.com/honchardev/crypto-sentiment-app/blob/master/django-app/main/views.py">django-app/main/views.py</a>"
+        у GitHub репозиторії веб-сайту.
+    </p>
+    <hr>
+
+    <h4>Функціональні точки АПІ</h4>
+    <p>todo: api endpoints</p>
+
+</div>
+{% endblock %}
+
+{% block footer %}
+<div class="footer-copyright text-center py-2 footer-copyright-custom">
+    <img class="mb-2" src="{% static 'logo.png' %}" alt="" width="24" height="24">
+    &copy; 2019 SENTPREDAPP
+</div>
+{% endblock %}
+
+{% block popup_modal_script %}
+<!-- popup_modal_script block is skipped -->
 {% endblock %}

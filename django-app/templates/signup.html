@@ -4,6 +4,10 @@
 
 {% block title %}SENTPREDAPP — Реєстрація довіреної особи{% endblock %}
 
+{% block popup_modal %}
+<!-- popup_modal block is skipped-->
+{% endblock %}
+
 {% block content %}
 <form method="post" class="form-signin">
     <div class="text-center mb-4">
@@ -45,4 +49,8 @@
     <img class="mb-2" src="{% static 'logo.png' %}" alt="" width="24" height="24">
     &copy; 2019 SENTPREDAPP
 </div>
+{% endblock %}
+
+{% block popup_modal_script %}
+<!-- popup_modal_script block is skipped -->
 {% endblock %}

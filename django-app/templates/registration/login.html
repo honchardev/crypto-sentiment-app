@@ -4,6 +4,10 @@
 
 {% block title %}SENTPREDAPP — Вхід до системи{% endblock %}
 
+{% block popup_modal %}
+<!-- popup_modal block is skipped-->
+{% endblock %}
+
 {% block content %}
 <form method="post" class="form-signin">
     <div class="text-center mb-4">
@@ -14,7 +18,7 @@
     {% csrf_token %}
 
     <label for="id_username" class="sr-only">Логін</label>
-    <input type="text" name="username" autofocus required id="id_username" class="form-control" placeholder="Логін"> 
+    <input type="text" name="username" autofocus required id="id_username" class="form-control" placeholder="Логін">
 
     <label for="id_password" class="sr-only">Пароль</label>
     <input type="password" name="password" required id="id_password" class="form-control" placeholder="Пароль">
@@ -34,4 +38,8 @@
     <img class="mb-2" src="{% static 'logo.png' %}" alt="" width="24" height="24">
     &copy; 2019 SENTPREDAPP
 </div>
+{% endblock %}
+
+{% block popup_modal_script %}
+<!-- popup_modal_script block is skipped -->
 {% endblock %}
