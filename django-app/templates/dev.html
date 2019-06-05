@@ -54,11 +54,6 @@
     <button type="button" class="btn btn-outline-primary" id="updNewsRange">Сайти новин</button>
     <br>
     <br>
-    <p class="mb-1">Оновлення останніх фінансових даних</p>
-    <button type="button" class="btn btn-outline-primary" id="updFinGlobalRange">Глобальні дані</button>
-    <button type="button" class="btn btn-outline-primary" id="updFinCurrenciesRange">Валюти BTC, LTC, ETH</button>
-    <br>
-    <br>
     <div class="updSourceRange"></div>
     <hr>
 
@@ -71,7 +66,7 @@
         <li>
             <p>Користувач "<b>{{ user.username }}</b>".
                 Зареєстрований: <b>{{ user.date_joined }}</b>.
-                Останній вхід: <b>{{ user.last_login }}"</b>
+                Останній вхід: <b>{{ user.last_login }}</b>
             </p>
         </li>
         {% endfor %}
@@ -101,7 +96,7 @@
         "#updTwitterLast", "#updRedditLast", "#updNewsLast", "#updFinGlobalLast", "#updFinCurrenciesLast",
     ]
     var buttons_range_ids = [
-        "#updTwitterRange", "#updRedditRange", "#updNewsRange", "#updFinGlobalRange", "#updFinCurrenciesRange"
+        "#updTwitterRange", "#updRedditRange", "#updNewsRange"
     ]
     function disable_other_buttons(enabled_button_id_name) {
         for (let index = 0; index < buttons_lasts_ids.length; index++) {
@@ -127,11 +122,9 @@
     <div class="loader"></div> \
     </div> \
     ';
-    var success_html_start = ' \
+    var success_html = ' \
     <div class="alert alert-success" role="alert"> \
     <p>Успішно завантажені дані.</p> \
-    '
-    var success_html_end = ' \
     </div> \
     '
     var fail_html = ' \
@@ -150,17 +143,7 @@
                 .done(function (data) {
                     if (data['status'] == "OK") {
                         console.log(data);
-                        let content = ""
-                        for (let index = 0; index < data['data'].length; index++) {
-                            content += "<p>" +
-                                "<a href=\"https://" + data['data'][index]['link'] + "\">" + 
-                                "Твіт Id = " + data['data'][index]['tweet_id'] + "</a>" +
-                                "</p>";
-                        }
-                        if (content == "") {
-                            content = "<p>Не знайдено нових записів із останніх новин</p>";
-                        }
-                        $("div.updSourceLast").html(success_html_start + content + success_html_end);
+                        $("div.updSourceLast").html(success_html);
                         console.log('done');
                     }
                     else {
@@ -190,17 +173,7 @@
                 .done(function (data) {
                     if (data['status'] == "OK") {
                         console.log(data);
-                        let content = ""
-                        for (let index = 0; index < data['data'].length; index++) {
-                            content += "<p>" +
-                                "<a href=\"https://" + data['data'][index]['link'] + "\">" + 
-                                "Твіт Id = " + data['data'][index]['tweet_id'] + "</a>" +
-                                "</p>";
-                        }
-                        if (content == "") {
-                            content = "<p>Не знайдено нових записів із останніх новин</p>";
-                        }
-                        $("div.updSourceRange").html(success_html_start + content + success_html_end);
+                        $("div.updSourceRange").html(success_html);
                         console.log('done');
                     }
                     else {

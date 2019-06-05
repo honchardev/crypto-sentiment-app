@@ -13,9 +13,17 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from ratelimit.decorators import ratelimit
 
+from .preprocessors.findata_preprocessor import (MarketDataCleaner,
+                                                 PriceDataCleaner)
+from .scrapers.scrape_fin import (FinScraperPerformer, MarketDataScraper,
+                                  PriceDataScraper)
 from .scrapers.scrape_twitter import TwitterScraperPerformer
 
 twitter_scraper_performer = TwitterScraperPerformer()
+fin_scraper_performer = FinScraperPerformer()
+
+marketdata_scraper = MarketDataScraper()
+pricedata_scraper = PriceDataScraper()
 
 
 def index(req):
@@ -87,9 +95,15 @@ def api_index(req):
 @ratelimit(key='ip', rate='10/m')
 def api_get_market_last(req):
     resp_data = {}
-    if req.method == 'POST':
-        # todo:
-        resp_data['status'] = 'OK'
+    if req.method == 'GET':
+        today_data = []
+        for mkt_data in marketdata_scraper.scrape_today_data():
+            today_data.append(mkt_data)
+        today_data_jsonified = [data.jsonify() for data in today_data]
+        resp_data = {
+            'status': 'OK',
+            'data': today_data_jsonified
+        }
     else:
         resp_data['status'] = 'FAIL'
     return JsonResponse(resp_data)
@@ -98,7 +112,47 @@ def api_get_market_last(req):
 @ratelimit(key='ip', rate='10/m')
 def api_get_price_last(req):
     resp_data = {}
-    if req.method == 'POST':
+    if req.method == 'GET':
+        full_data = pricedata_scraper.scrape_current_full_data()
+        resp_data = {
+            'status': 'OK',
+            'data': full_data
+        }
+    else:
+        resp_data['status'] = 'FAIL'
+    return JsonResponse(resp_data)
+
+
+@ratelimit(key='ip', rate='10/m')
+def api_get_tweets_last(req):
+    resp_data = {}
+    if req.method == 'GET':
+        tweets = twitter_scraper_performer.get_last_tweets(20)
+        tweets_jsonified = [tweet.jsonify() for tweet in tweets]
+        resp_data = {
+            'status': 'OK',
+            'data': tweets_jsonified
+        }
+    else:
+        resp_data['status'] = 'FAIL'
+    return JsonResponse(resp_data)
+
+
+@ratelimit(key='ip', rate='10/m')
+def api_get_reddit_last(req):
+    resp_data = {}
+    if req.method == 'GET':
+        # todo:
+        resp_data['status'] = 'OK'
+    else:
+        resp_data['status'] = 'FAIL'
+    return JsonResponse(resp_data)
+
+
+@ratelimit(key='ip', rate='10/m')
+def api_get_news_last(req):
+    resp_data = {}
+    if req.method == 'GET':
         # todo:
         resp_data['status'] = 'OK'
     else:
@@ -122,9 +176,13 @@ def api_update_last_data(req):
         elif button_id == "updNewsLast":
             pass
         elif button_id == "updFinGlobalLast":
-            pass
+            resp_data = fin_scraper_performer.scrape_market_data()
+            resp_data_jsonified = [data.jsonify() for data in resp_data['data']]
+            resp_data['data'] = resp_data_jsonified
         elif button_id == "updFinCurrenciesLast":
-            pass
+            resp_data = fin_scraper_performer.scrape_price_data()
+            resp_data_jsonified = [data.jsonify() for data in resp_data['data']]
+            resp_data['data'] = resp_data_jsonified
         else:
             resp_data['status'] = 'FAIL'
     else:
@@ -149,13 +207,10 @@ def api_update_range_data(req):
             resp_data = twitter_scraper_performer.scrape_date_range_data(from_date, to_date)
             resp_data_jsonified = [tweet.jsonify() for tweet in resp_data['data']]
             resp_data['data'] = resp_data_jsonified
+            # todo: clean twitter data
         elif button_id == "updRedditRange":
             pass
         elif button_id == "updNewsRange":
-            pass
-        elif button_id == "updFinGlobalRange":
-            pass
-        elif button_id == "updFinCurrenciesRange":
             pass
         else:
             resp_data['status'] = 'FAIL'

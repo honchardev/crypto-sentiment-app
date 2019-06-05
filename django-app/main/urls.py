@@ -18,6 +18,11 @@ urlpatterns = [
     path('aboutalgo/', TemplateView.as_view(template_name='aboutalgo.html'), name='aboutalgo'),
 
     path('api/', views.api_index, name='api_index'),
+    path('api/get_market_last', views.api_get_market_last, name='api_get_market_last'),
+    path('api/get_price_last', views.api_get_price_last, name='api_get_price_last'),
+    path('api/get_tweets_last', views.api_get_tweets_last, name='api_get_tweets_last'),
+    path('api/get_reddit_last', views.api_get_reddit_last, name='api_get_reddit_last'),
+    path('api/get_news_last', views.api_get_news_last, name='api_get_news_last'),
     path('api/update_last_data', views.api_update_last_data, name='api_update_last_data'),
     path('api/update_range_data', views.api_update_range_data, name='api_update_range_data'),
 ]

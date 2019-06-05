@@ -350,12 +350,13 @@ class TwitterScraperPerformer(object):
         for username in self.usernames:
             print('Start scraping {0}\n'.format(username))
             for tweet_bunch in self.twitter_scraper.scrape_userpage_timeline_adv_search(username, from_date, to_date):
-                print('Go to next bunch for {0}'.format(username))
+                print('Go to next bunch for {0}\n'.format(username))
                 for tweet in tweet_bunch:
                     if tweet.tweet_id not in self.existing_tweets_ids:
                         self._save_tweet(tweet)
                         data_container.append(tweet)
                     else:
+                        print('continue {0}\n'.format(username))
                         continue
         # Update local storage of existing tweets ids.
         self.existing_tweets_ids = self._get_existing_tweets_ids()
@@ -365,18 +366,44 @@ class TwitterScraperPerformer(object):
             for search_term in search_terms:
                 print('Start scraping {0}\n'.format(search_term))
                 for tweet_bunch in self.twitter_scraper.scrape_search_timeline_adv_search(search_term, from_date, to_date, currencyId_id):
-                    print('Go to next bunch for {0}'.format(search_term))
+                    print('Go to next bunch for {0}\n'.format(search_term))
                     for tweet in tweet_bunch:
                         if tweet.tweet_id not in self.existing_tweets_ids:
                             self._save_tweet(tweet)
                             data_container.append(tweet)
                         else:
+                            print('continue {0}\n'.format(search_term))
                             continue
         # Return data and status for webpage view.
         return {
             'status': 'OK',
             'data': data_container
         }
+
+    def get_last_tweets(self, n_tweets):
+        select_query = """SELECT * FROM main_twittermedia ORDER BY date DESC LIMIT %s;"""
+        select_query_fields = (n_tweets, )
+        self.cur.execute(select_query, select_query_fields)
+        tweets_data_from_db = self.cur.fetchall()
+        tweets = [self._tweet_jsonify_from_db(tweet) for tweet in tweets_data_from_db]
+        return tweets
+
+    @staticmethod
+    def _tweet_jsonify_from_db(row):
+        return Tweet(
+            tweet_content=row[1],
+            favorite_cnt=row[2],
+            retweet_cnt=row[3],
+            reply_cnt=row[4],
+            tweet_link=row[5],
+            timestamp=row[6],
+            textblobscore=row[7],
+            vaderscore=row[8],
+            customclfscore=row[9],
+            currencyId_id=row[10],
+            mediaId_id=row[11],
+            tweet_id=row[12]
+        )
 
     def _get_existing_tweets_ids(self):
         # Save Tweet IDs
@@ -426,6 +453,12 @@ def __dbg_db():
     resp = tsp.scrape_date_range_data(from_date, to_date)
 
 
+def __dbg_get():
+    tsp = TwitterScraperPerformer()
+    data = tsp.get_last_tweets(20)
+    print(data)
+
+
 def __dbg_truncate_db():
     try:
         conn = psycopg2.connect()
@@ -439,7 +472,7 @@ def __dbg_truncate_db():
 
 def __historical_big_date_range():
     tsp = TwitterScraperPerformer()
-    date_from = datetime(2017, 8, 1)
+    date_from = datetime(2019, 1, 1)
     date_to = datetime.now()
     while date_from < date_to:
         date_from_plus_1d = date_from + timedelta(days=1)

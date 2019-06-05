@@ -21,6 +21,11 @@ cryptocurrency_id_by_ticker = {
     'ETH': 2,
     'LTC': 3
 }
+ticker_by_cryptocurrency_id = {
+    1: 'BTC',
+    2: 'ETH',
+    3: 'LTC'
+}
 
 # Default values for sentiment, predictions and trends.
 DEFAULT_SENT_VALUE = 100.0
@@ -81,7 +86,7 @@ class PriceData(object):
 
     def __repr__(self):
         return "PriceData {0}".format(" ".join(
-            [str(self.closeprice), str(self.volumeto), self.date.strftime("%m/%d/%Y, %H:%M:%S")]))
+            [ticker_by_cryptocurrency_id[self.currencyId_id], str(self.closeprice), self.date.strftime("%m/%d/%Y, %H:%M:%S")]))
 
 
 class MarketDataScraper(object):
@@ -134,8 +139,11 @@ class MarketDataScraper(object):
             end_range_unix_ms = int(end_range.timestamp() * 1000)
             request_url = GLOBAL_MC_VOL.format(start_range_unix_ms, end_range_unix_ms)
             # Send a request & collect raw response text
-            response = requests.get(request_url, headers={'User-agent': USER_AGENT})
-            response_dict = json.loads(response.text)
+            try:
+                response = requests.get(request_url, headers={'User-agent': USER_AGENT})
+                response_dict = json.loads(response.text)
+            except json.decoder.JSONDecodeError:
+                break
             # Yield volume and mktcap data.
             global_mktcap_data = response_dict.get('market_cap_by_available_supply')
             global_volume_data = response_dict.get('volume_usd')
@@ -153,7 +161,7 @@ class MarketDataScraper(object):
             # Update start_range with the range end's date.
             start_range = end_range
             # Wait for a bit bc DBAD.
-            time.sleep(0.1)
+            time.sleep(0.5)
 
 
 class PriceDataScraper(object):
@@ -261,22 +269,78 @@ class FinScraperPerformer(object):
 
     def scrape_market_data(self):
         # Update existing dates in main_market table.
-        self.existing_dates_market = self._get_existing_dates_market()
+        raw_existing_dates_market = self._get_existing_dates_market()
+        self.existing_dates_market = [(item.date(), item.hour) for item in raw_existing_dates_market]
         # The latest date to scrape.
         latest_date = datetime.now() + timedelta(hours=1)
         # Start scraping market data.
+        new_data_container = []
         for mkt_data in self.mds.scrape_historical_data(self.earliest_date, latest_date):
-            if mkt_data.date not in self.existing_dates_market:
+            item_not_in_table_filter = (mkt_data.date.date(), mkt_data.date.hour) not in self.existing_dates_market
+            if item_not_in_table_filter:
+                new_data_container.append(mkt_data)
                 self._save_marketdata(mkt_data)
+        return {
+            'status': 'OK',
+            'data': new_data_container
+        }
 
     def scrape_price_data(self):
         # Update existing dates in main_price table.
-        self.existing_dates_price = self._get_existing_dates_price()
+        raw_existing_dates_price = self._get_existing_dates_price()
+        self.existing_dates_price = [(item.date(), item.hour) for item in raw_existing_dates_price]
         # Start scraping price data by currency ticker.
+        new_data_container = []
         for ticker in cryptocurrency_id_by_ticker.keys():
             for price_data in self.pds.scrape_historical_data(ticker, self.earliest_date):
-                if price_data not in self.existing_dates_price:
+                item_not_in_table_filter = (price_data.date.date(), price_data.date.hour) not in self.existing_dates_price
+                if item_not_in_table_filter:
+                    new_data_container.append(price_data)
                     self._save_pricedata(price_data)
+        return {
+            'status': 'OK',
+            'data': new_data_container
+        }
+
+    def get_last_market_data(self, n_points):
+        select_query = """SELECT * FROM main_market ORDER BY date DESC LIMIT %s;"""
+        select_query_fields = (n_points, )
+        self.cur.execute(select_query, select_query_fields)
+        market_data_from_db = self.cur.fetchall()
+        market_data = [self._marketdata_jsonify_from_db(row) for row in market_data_from_db]
+        return market_data
+
+    def get_last_price_data(self, n_points):
+        select_query = """SELECT * FROM main_price ORDER BY date DESC LIMIT %s;"""
+        select_query_fields = (n_points, )
+        self.cur.execute(select_query, select_query_fields)
+        price_data_from_db = self.cur.fetchall()
+        price_data = [self._pricedata_jsonify_from_db(row) for row in price_data_from_db]
+        return price_data
+
+    @staticmethod
+    def _marketdata_jsonify_from_db(row):
+        return MarketData(
+            date=row[1],
+            globalmarketcap=row[2],
+            mchoursentiment=row[3],
+            mchourprediction=row[4],
+            mchourtrend=row[5]
+        )
+
+    @staticmethod
+    def _pricedata_jsonify_from_db(row):
+        return PriceData(
+            date=row[1],
+            openprice=row[2],
+            highprice=row[3],
+            lowprice=row[4],
+            closeprice=row[5],
+            spreadvalue=row[6],
+            returnvalue=row[7],
+            currencyId_id=row[8],
+            volumeto=row[9]
+        )
 
     def _save_marketdata(self, md_obj):
         insert_query = """
@@ -333,8 +397,17 @@ def __dbg():
 
     pdscrapper = PriceDataScraper()
     scraped_data = pdscrapper.scrape_current_full_data()
+    print(scraped_data)
     for price_data in pdscrapper.scrape_historical_data('ETH', from_date):
-        pass
+        print(price_data)
+
+
+def __dbg_get():
+    fsp = FinScraperPerformer()
+    data = fsp.get_last_market_data(20)
+    data = fsp.get_last_price_data(20)
+    print(data)
+
 
 def __historical_all_date_range():
     fsp = FinScraperPerformer()
